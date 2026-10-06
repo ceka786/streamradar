@@ -127,6 +127,8 @@ h1{font-family:var(--display);font-variation-settings:"opsz" 72;font-weight:800;
 .rank{font-family:var(--display);font-variation-settings:"opsz" 96;font-weight:800;font-size:92px;line-height:.78;letter-spacing:.02em;margin-right:-10px;color:var(--rank-fill);-webkit-text-stroke:4px var(--rank-stroke);paint-order:stroke fill;font-variant-numeric:lining-nums}
 .trc .tp{width:96px;aspect-ratio:2/3;height:auto;border-radius:var(--r-m);object-fit:cover;display:block;background:var(--raised);position:relative;box-shadow:var(--lift)}
 .trc[aria-expanded=true] .tp{outline:3px solid var(--accent);outline-offset:3px}
+.trc.nw{display:flex;flex-direction:column;align-items:flex-start;gap:6px}
+.trc .nd{font-size:12px;font-weight:600;color:var(--muted);font-variant-numeric:tabular-nums}
 .trdet{margin-top:8px;background:var(--surface);border-radius:var(--r-l);padding:16px;box-shadow:0 0 0 1px var(--line);display:grid;gap:10px;position:relative}
 
 /* lenyíló rész: a magasság a rács-sor 0fr → 1fr átmenetével animálódik */
@@ -352,6 +354,16 @@ footer details.panel[open]>summary::after{transform:rotate(-135deg)}
   <div class="fold" id="trFold"><div><div class="trdet" id="trDet"></div></div></div>
 </section>
 
+<!-- Új a kínálatban: az elmúlt 7 nap újdonságai (legfrissebb elöl), ugyanúgy lenyíló adatlappal -->
+<section class="shelf" id="newShelf" hidden>
+  <div class="shead">
+    <h2 data-i="newTitle"></h2>
+    <button class="mini-b" id="newAll" type="button" data-i="newAll"></button>
+  </div>
+  <div class="trrow" id="newRow"></div>
+  <div class="fold" id="newFold"><div><div class="trdet" id="newDet"></div></div></div>
+</section>
+
 <!-- Eszközsor: görgetéskor a képernyő tetején marad -->
 <div class="tools">
   <div class="bar">
@@ -542,7 +554,7 @@ const T = {
     ch_only:"Nur", ch_not:"Nicht", ySince:y=>`ab ${y}`, yUntil:y=>`bis ${y}`,
     chipDel:l=>`Filter „${l}“ entfernen`, sortBy:l=>`Sortiert nach: ${l}.`,
     regionT:"Streaming-Region", reg_HU:"Ungarn", reg_DE:"Deutschland", regLast:"Mindestens ein Land muss ausgewählt bleiben.",
-    otherLangs:"Weitere Sprachen", otherLangsEach:"Weitere Sprachen einzeln", defaultsB:"Standard",
+    newTitle:"Neu im Angebot", newAll:"Alle →", newAllT:"Alle Neuheiten der letzten 7 Tage in der Liste zeigen", otherLangs:"Weitere Sprachen", otherLangsEach:"Weitere Sprachen einzeln", defaultsB:"Standard",
     th_auto:"Auto", th_light:"Hell", th_dark:"Dunkel", themeT:n=>`Darstellung: ${n}. Tippen zum Wechseln.`,
     th_name:{auto:"automatisch (wie das Gerät)", light:"hell", dark:"dunkel"}, sortOpen:"Sortierung und Seitengröße", ovLangT:"Sprache der Handlung",
     locale:"de-DE" },
@@ -596,7 +608,7 @@ const T = {
     ch_only:"Csak", ch_not:"Nem", ySince:y=>`${y} óta`, yUntil:y=>`${y}-ig`,
     chipDel:l=>`„${l}” szűrő törlése`, sortBy:l=>`Rendezés: ${l.toLowerCase()}.`,
     regionT:"Streaming-régió", reg_HU:"Magyarország", reg_DE:"Németország", regLast:"Legalább egy országnak bekapcsolva kell maradnia.",
-    otherLangs:"Egyéb nyelvek", otherLangsEach:"Egyéb nyelvek egyenként", defaultsB:"Alapértelmezett",
+    newTitle:"Új a kínálatban", newAll:"Mind →", newAllT:"Az elmúlt 7 nap összes újdonsága a listában", otherLangs:"Egyéb nyelvek", otherLangsEach:"Egyéb nyelvek egyenként", defaultsB:"Alapértelmezett",
     th_auto:"Auto", th_light:"Nappal", th_dark:"Éjjel", themeT:n=>`Megjelenés: ${n}. Koppints a váltáshoz.`,
     th_name:{auto:"automatikus (mint a telefon)", light:"nappali", dark:"éjszakai"}, sortOpen:"Rendezés és oldalméret", ovLangT:"A leírás nyelve",
     locale:"hu-HU" }
@@ -804,7 +816,8 @@ function langState(v){
   if (picks.lang[v]) return picks.lang[v];
   return MAIN_LANG.includes(v) ? 0 : (picks.lang._other || 0);
 }
-function passPicks(m){
+/* nyelv + gyártó ország – ez a lista MELLETT a két polcra (trendek, újdonságok) is hat */
+function passLC(m){
   // nyelv: ✗ → kimarad; ha van bárhol ✓, csak a ✓ nyelvűek maradnak
   const ls = langState(m.lang);
   if (ls === 2) return false;
@@ -813,6 +826,10 @@ function passPicks(m){
   const p = picks.country, v = m.country;
   if (v && p[v] === 2) return false;
   if (Object.values(p).some(s => s === 1) && !(v && p[v] === 1)) return false;
+  return true;
+}
+function passPicks(m){
+  if (!passLC(m)) return false;
   // műfaj: ✗ bármelyik → kimarad; ha van ✓, legalább EGY ✓ műfaja legyen (bármelyik)
   const gp = gpicks[kind], gs = m.genres || [];
   if (gs.some(id => gp[id] === 2)) return false;
@@ -987,12 +1004,15 @@ function apply(){
 
   updateStats();
   page = 0; render();
+  renderTrends();   // a polcok (csak akkor rajzolódnak újra, ha változott a tartalmuk)
 }
 /* ===== 7b. MEGJELENÍTÉS OLDALANKÉNT ======================================
    pageSize = 10/25/50/100 → egyszerre egy oldal, lapozóval
    pageSize = "all"        → minden, görgetésre töltődik (a telefon miatt adagokban) */
 let listOpen = null;   // a listában épp lenyitott cím azonosítója (szövegként)
-let trOpen = null;     // a trendsor alatt nyitott cím: {k: fajta, id}
+/* a két polc (trendek, újdonságok) alatt nyitott cím: {k: fajta, id} */
+const SH = {tr: {row: "#trRow", det: "#trDet", fold: "#trFold"}, nw: {row: "#newRow", det: "#newDet", fold: "#newFold"}};
+const shOpen = {tr: null, nw: null}, shKey = {tr: "", nw: ""};
 function render(){
   shown = 0; listOpen = null;   // újrarajzoláskor a lenyitott adatlap becsukódik
   $("#list").innerHTML = view.length ? "" : `<p class="empty">${t("empty")}</p>`;
@@ -1230,7 +1250,7 @@ $("#list").addEventListener("click", e => {
   }
   const m = cur().byId[id];
   if (m) { row.outerHTML = card(m); popBtn(`#list .film[data-id="${id}"]`, name); }   // csak ezt az egy sort rajzoljuk újra
-  if (trOpen && trOpen.id === id) refreshTr();                 // a trend-adatlap gombjai is frissülnek
+  refreshOpenShelves(id);                                      // a polcok adatlapjának gombjai is frissülnek
 });
 /* bekapcsoláskor a gomb egy kicsit „megpattan” */
 function popBtn(scope, name){
@@ -1265,52 +1285,89 @@ function download(name, obj){
   a.download = name; document.body.appendChild(a); a.click(); a.remove();
 }
 
-/* ===== 9b. TREND-POLC =====================================================
-   A heti trendlista sorrendjében azok a címek, amik a fenti streaming-régióban
-   (HU / DE / mindkettő) most elérhetők egy BEKAPCSOLT szolgáltatódnál. A többi
-   szűrő, a látott és az elrejtett címek nem hatnak rá. Nagy szám = helyezés; koppintásra alatta nyílik le
-   az adatlap (plakát nélkül, mert az fölötte már látszik). */
+/* ===== 9b. POLCOK: TRENDEK ÉS ÚJDONSÁGOK ================================
+   Mindkettő a fenti streaming-régióban (HU / DE / mindkettő) egy BEKAPCSOLT
+   szolgáltatódnál most elérhető címeket mutatja, és a „Nyelv és ország”
+   beállítás (pl. egyéb nyelvek ✗, India ✗) is hat rájuk. A többi szűrő
+   (szavazat, év, műfaj, látott, elrejtett) nem.
+   - Trendek: a TMDB heti trendlistájának sorrendjében, nagy helyezés-számmal.
+   - Új a kínálatban: az elmúlt 7 napban megjelentek, a legfrissebb nap elöl,
+     azon belül a népszerűbb előre.
+   Koppintásra a sor alatt nyílik le az adatlap (plakát nélkül). */
 const reduced = () => window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-function renderTrends(){
-  const d = cur(), box = $("#trends");
-  if (!d) { box.hidden = true; return; }
-  const list = d.trending.map(id => d.byId[id])
-    .filter(m => m && (country === "ALL" ? ["HU", "DE"] : [country]).some(c => onIn(m, c))).slice(0, 20);
+const regions = () => country === "ALL" ? ["HU", "DE"] : [country];
+function trendList(d){
+  return d.trending.map(id => d.byId[id]).filter(m => m && regions().some(c => onIn(m, c)) && passLC(m)).slice(0, 20);
+}
+/* újdonságok: [megjelenés napja, cím] – ugyanaz a szabály, mint az „Új” jelvénynél */
+function newList(d){
+  const week = daysAgo(7), out = [];
+  for (const m of d.all) {
+    let day = "";
+    for (const c of regions()) for (const [k, a] of Object.entries(m.avail[c] || {}))
+      if (svcSel(k) && a.on && a.first && a.first >= week && a.first > (d.since[`${c}:${k}`] || d.initial) && a.first > day) day = a.first;
+    if (day && passLC(m)) out.push([day, m]);
+  }
+  return out.sort((x, y) => y[0].localeCompare(x[0]) || (y[1].pop || 0) - (x[1].pop || 0)).slice(0, 20);
+}
+const poster185 = m => m.poster ? `<img class="tp" loading="lazy" alt="" src="https://image.tmdb.org/t/p/w185${m.poster}">` : `<div class="tp"></div>`;
+const shortDay = d => new Date(d).toLocaleDateString(t("locale"), {month: "short", day: "numeric"});
+function renderTrends(){            // (a név maradt: mindkét polcot kirajzolja)
+  const d = cur();
+  if (!d) { $("#trends").hidden = $("#newShelf").hidden = true; return; }
+  const tr = trendList(d), nw = newList(d);
+  fillShelf("tr", $("#trends"), tr, (m, i) => `<button class="trc" type="button" data-open="${m.id}" aria-expanded="false" aria-label="${i + 1}. ${esc(ttl(m))}">
+      <span class="rank" aria-hidden="true">${i + 1}</span>${poster185(m)}</button>`);
+  fillShelf("nw", $("#newShelf"), nw.map(x => x[1]), (m, i) => `<button class="trc nw" type="button" data-open="${m.id}" aria-expanded="false" aria-label="${esc(ttl(m))}, ${shortDay(nw[i][0])}">
+      ${poster185(m)}<span class="nd">${shortDay(nw[i][0])}</span></button>`);
+  $("#newAll").title = t("newAllT"); $("#newAll").setAttribute("aria-label", t("newAllT"));
+}
+/* egy polc kirajzolása – csak ha változott a tartalma (így gépelés közben nem ugrál vissza) */
+function fillShelf(s, box, list, html){
   box.hidden = !list.length;
-  // a nyitott trend-adatlap marad, ha a cím még a sorban van; különben becsukódik
-  if (trOpen && (trOpen.k !== kind || !list.some(m => String(m.id) === trOpen.id))) closeTr();
-  $("#trRow").innerHTML = list.map((m, i) => `<button class="trc" type="button" data-open="${m.id}" aria-expanded="false" aria-label="${i + 1}. ${esc(ttl(m))}">
-      <span class="rank" aria-hidden="true">${i + 1}</span>${m.poster ? `<img class="tp" loading="lazy" alt="" src="https://image.tmdb.org/t/p/w185${m.poster}">` : `<div class="tp"></div>`}</button>`).join("");
-  markTr(); if (trOpen) refreshTr();   // nyelvváltáskor a nyitott adatlap is átvált
+  if (shOpen[s] && (shOpen[s].k !== kind || !list.some(m => String(m.id) === shOpen[s].id))) closeSh(s);
+  const key = kind + lang + list.map(m => m.id).join(",");
+  if (key !== shKey[s]) { shKey[s] = key; $(SH[s].row).innerHTML = list.map(html).join(""); }
+  markSh(s); if (shOpen[s]) refreshSh(s);   // nyelvváltáskor a nyitott adatlap is átvált
 }
-$("#trRow").addEventListener("click", e => { const b = e.target.closest("[data-open]"); if (b) openTr(b.dataset.open); });
-$("#trDet").addEventListener("click", e => {
-  if (e.target.closest(".x")) { closeTr(); return; }
-  const btn = e.target.closest("button.ib"); if (btn && trOpen) toggleMark(trOpen.id, btn);
+for (const s in SH) {
+  $(SH[s].row).addEventListener("click", e => { const b = e.target.closest("[data-open]"); if (b) openSh(s, b.dataset.open); });
+  $(SH[s].det).addEventListener("click", e => {
+    if (e.target.closest(".x")) { closeSh(s); return; }
+    const btn = e.target.closest("button.ib"); if (btn && shOpen[s]) toggleMark(shOpen[s].id, btn);
+  });
+}
+// „Mind →”: a listában bekapcsolja a „Csak az elmúlt 7 nap újdonságai” szűrőt, és odagörget
+$("#newAll").addEventListener("click", () => {
+  $("#onlyNew").checked = true; saveFilters(); apply();
+  const y = $("#pagerTop").getBoundingClientRect().top + window.scrollY - $(".tools").offsetHeight;
+  window.scrollTo({top: Math.max(0, y), behavior: reduced() ? "auto" : "smooth"});
 });
-function openTr(id){
-  if (trOpen && trOpen.k === kind && trOpen.id === id) { closeTr(); return; }
+function openSh(s, id){
+  if (shOpen[s] && shOpen[s].k === kind && shOpen[s].id === id) { closeSh(s); return; }
   if (!cur().byId[id]) return;
-  trOpen = {k: kind, id};
-  markTr(); $("#trDet").innerHTML = ""; refreshTr();
-  $("#trFold").classList.add("open");
-  setTimeout(() => { if (trOpen) $("#trFold").scrollIntoView({block: "nearest", behavior: reduced() ? "auto" : "smooth"}); }, 280);
+  shOpen[s] = {k: kind, id};
+  markSh(s); $(SH[s].det).innerHTML = ""; refreshSh(s);
+  $(SH[s].fold).classList.add("open");
+  setTimeout(() => { if (shOpen[s]) $(SH[s].fold).scrollIntoView({block: "nearest", behavior: reduced() ? "auto" : "smooth"}); }, 280);
 }
-function refreshTr(){
-  const m = cur() && cur().byId[trOpen.id]; if (!m) { closeTr(); return Promise.resolve(); }
+function refreshSh(s){
+  const o = shOpen[s], m = o && cur() && cur().byId[o.id]; if (!m) { closeSh(s); return Promise.resolve(); }
   m._on = isAvailable(m);
-  const draw = x => $("#trDet").innerHTML =
+  const det = $(SH[s].det);
+  const draw = x => det.innerHTML =
     `<button class="x" type="button" title="${t("close")}" aria-label="${t("close")}">${ICON.x}</button>`
     + detHead(m, false) + detBody(m, x) + seasonsBlock(m) + detLinks(m, x);
-  if (!$("#trDet").innerHTML) draw({loading: true});
-  const {k, id} = trOpen;
-  return loadDetails(k, id).then(x => { if (trOpen && trOpen.id === id && kind === k) draw(x); });
+  if (!det.innerHTML) draw({loading: true});
+  const {k, id} = o;
+  return loadDetails(k, id).then(x => { if (shOpen[s] && shOpen[s].id === id && kind === k) draw(x); });
 }
-function closeTr(){
-  trOpen = null; $("#trFold").classList.remove("open"); markTr();
-  setTimeout(() => { if (!trOpen) $("#trDet").innerHTML = ""; }, 300);   // a csukódás után ürül ki
+function closeSh(s){
+  shOpen[s] = null; $(SH[s].fold).classList.remove("open"); markSh(s);
+  setTimeout(() => { if (!shOpen[s]) $(SH[s].det).innerHTML = ""; }, 300);   // a csukódás után ürül ki
 }
-function markTr(){ $$("#trRow .trc").forEach(b => b.setAttribute("aria-expanded", !!trOpen && b.dataset.open === trOpen.id)); }
+function markSh(s){ $$(SH[s].row + " .trc").forEach(b => b.setAttribute("aria-expanded", !!shOpen[s] && b.dataset.open === shOpen[s].id)); }
+const refreshOpenShelves = id => { for (const s in SH) if (shOpen[s] && (!id || shOpen[s].id === id)) refreshSh(s); };
 
 /* ===== 9c. ADATLAP ========================================================
    Az adatlapok 100 kis fájlban vannak (data/details/<fajta>/00.json … 99.json,
@@ -1414,7 +1471,7 @@ document.addEventListener("click", e => {
     const el = $(`#list .exp[data-for="${listOpen}"]`), m = cur().byId[listOpen], k = kind;
     if (el && m) loadDetails(k, listOpen).then(x => { if (el.isConnected) el.firstElementChild.innerHTML = expHTML(m, x); });
   }
-  if (trOpen) refreshTr();
+  refreshOpenShelves();
   if (sheetM) loadDetails(kind, sheetM.id).then(renderSheet);
 });
 /* ✓ láttam / megnézem / ajánlom gomb az adatlapon (🎲 vagy trend-panel):
@@ -1427,7 +1484,7 @@ function toggleMark(id, btn){
   const m = cur().byId[id]; if (!m) return;
   const row = $(`#list .film[data-id="${id}"]`); if (row) row.outerHTML = card(m);
   if (sheetM && String(sheetM.id) === id) loadDetails(kind, id).then(x => { renderSheet(x); popBtn("#sheetBody", name); });
-  if (trOpen && trOpen.id === id) refreshTr().then(() => popBtn("#trDet", name));
+  for (const s in SH) if (shOpen[s] && shOpen[s].id === id) refreshSh(s).then(() => popBtn(SH[s].det, name));
 }
 
 /* ===== 9c2. LENYÍLÓ ADATLAP A LISTÁBAN ====================================
