@@ -181,8 +181,8 @@ h1{font-family:var(--display);font-variation-settings:"opsz" 72;font-weight:800;
 .av .svct{border-radius:var(--r-s);background:var(--raised);padding:1px 7px;font-size:12px;font-weight:600}
 .av .svct.off{opacity:.45}
 .av.off .until{color:var(--no);font-size:12px;font-weight:600}
-.acts{display:flex;gap:4px;margin-top:8px;margin-left:-8px}
-.ib{width:38px;height:38px;border-radius:50%;border:0;background:none;display:grid;place-items:center;cursor:pointer;color:var(--muted);transition:transform .16s var(--ease),background-color .2s var(--ease),color .2s var(--ease)}
+.acts{display:flex;gap:12px;margin-top:8px;margin-left:-9px}
+.ib{width:42px;height:42px;border-radius:50%;border:0;background:none;display:grid;place-items:center;cursor:pointer;color:var(--muted);transition:transform .16s var(--ease),background-color .2s var(--ease),color .2s var(--ease)}
 .ib:hover{background:var(--raised)}
 .ib:active{transform:scale(.9)}
 .ib.seen{--c:var(--ok)} .ib.star{--c:var(--accent)} .ib.rec{--c:var(--rec)}
@@ -311,6 +311,10 @@ footer details.panel[open]>summary::after{transform:rotate(-135deg)}
 .ftools{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0 6px}
 .ftools button,.ftools label{font-size:13px;border:1px solid var(--line);background:none;border-radius:999px;padding:6px 12px;cursor:pointer}
 .plabel{font-size:13px;color:var(--muted)}
+details.logbox{margin-top:12px;border-top:1px solid var(--line);padding-top:10px}
+details.logbox>summary{cursor:pointer;font-weight:700}
+.loglist{list-style:none;margin:8px 0 0;padding:0;display:grid;gap:4px;font-size:13px;max-height:50vh;overflow:auto}
+.loglist .lt{color:var(--muted);font-variant-numeric:tabular-nums}
 .tmdblogo{height:11px;width:auto;vertical-align:0;margin-right:6px}
 @media (prefers-reduced-motion:reduce){*,*::before,*::after{transition-duration:.01ms!important;transition-delay:0s!important;animation:none!important}}
 </style>
@@ -398,6 +402,13 @@ footer details.panel[open]>summary::after{transform:rotate(-135deg)}
       <label><span data-i="impCsv"></span><input type="file" id="impCsv" accept=".csv,text/csv" hidden></label>
     </div>
     <div class="plabel" data-i="impCsvHint"></div>
+    <!-- napló: az utolsó 200 jelölés, hogy kiderüljön, mi mikor és hol történt -->
+    <details class="logbox" id="logBox">
+      <summary data-i="logT"></summary>
+      <p class="plabel" data-i="logHint"></p>
+      <div class="ftools"><button id="logExp" type="button" data-i="logExp"></button></div>
+      <ol class="loglist" id="logList"></ol>
+    </details>
   </details>
   <!-- TMDB hivatalos logója (kötelező feltüntetés), kicsiben -->
   <div><a href="https://www.themoviedb.org" rel="noopener"><img class="tmdblogo" alt="TMDB" src="https://www.themoviedb.org/assets/2/v4/logos/v2/blue_short-8e7b30f73a4020692ccca9c88bafe5dcb6f8a62a4c6bc55cd9ba82bb2cd95f6c.svg"></a>
@@ -553,6 +564,8 @@ const T = {
     ch_new:"Neu (7 Tage)", ch_season:"Neue Staffel", ch_noGone:"Ohne nicht mehr verfügbare", ch_hidden:"Mit ausgeblendeten", ch_asc:"Aufsteigend sortiert",
     ch_only:"Nur", ch_not:"Nicht", ySince:y=>`ab ${y}`, yUntil:y=>`bis ${y}`,
     chipDel:l=>`Filter „${l}“ entfernen`, sortBy:l=>`Sortiert nach: ${l}.`,
+    logT:"Verlauf der Markierungen", logHint:"Die letzten 200 Markierungen auf diesem Gerät, mit Zeit und Ort.", logExp:"Verlauf speichern", logEmpty:"Noch keine Einträge.",
+    src_list:"Liste", src_trend:"Trends", src_new:"Neu im Angebot", src_dice:"Zufall",
     regionT:"Streaming-Region", reg_HU:"Ungarn", reg_DE:"Deutschland", regLast:"Mindestens ein Land muss ausgewählt bleiben.",
     newTitle:"Neu im Angebot", newAll:"Alle →", newAllT:"Alle Neuheiten der letzten 7 Tage in der Liste zeigen", otherLangs:"Weitere Sprachen", otherLangsEach:"Weitere Sprachen einzeln", defaultsB:"Standard",
     th_auto:"Auto", th_light:"Hell", th_dark:"Dunkel", themeT:n=>`Darstellung: ${n}. Tippen zum Wechseln.`,
@@ -607,6 +620,8 @@ const T = {
     ch_new:"Új (7 nap)", ch_season:"Friss évad", ch_noGone:"Nem elérhetők nélkül", ch_hidden:"Elrejtettekkel", ch_asc:"Növekvő sorrend",
     ch_only:"Csak", ch_not:"Nem", ySince:y=>`${y} óta`, yUntil:y=>`${y}-ig`,
     chipDel:l=>`„${l}” szűrő törlése`, sortBy:l=>`Rendezés: ${l.toLowerCase()}.`,
+    logT:"Jelölések naplója", logHint:"Az utolsó 200 jelölés ezen az eszközön, idővel és hellyel.", logExp:"Napló mentése", logEmpty:"Még nincs bejegyzés.",
+    src_list:"lista", src_trend:"trendek", src_new:"újdonságok", src_dice:"kocka",
     regionT:"Streaming-régió", reg_HU:"Magyarország", reg_DE:"Németország", regLast:"Legalább egy országnak bekapcsolva kell maradnia.",
     newTitle:"Új a kínálatban", newAll:"Mind →", newAllT:"Az elmúlt 7 nap összes újdonsága a listában", otherLangs:"Egyéb nyelvek", otherLangsEach:"Egyéb nyelvek egyenként", defaultsB:"Alapértelmezett",
     th_auto:"Auto", th_light:"Nappal", th_dark:"Éjjel", themeT:n=>`Megjelenés: ${n}. Koppints a váltáshoz.`,
@@ -634,6 +649,34 @@ const D = {movie: null, tv: null};
 const L = {};
 for (const k in KINDS) { L[k] = {}; LIST_NAMES.forEach(n => L[k][n] = load(KINDS[k].pre + n)); }
 const saveList = (k, n) => store(KINDS[k].pre + n, L[k][n]);
+/* Egy jelölés ki/be kapcsolása. FONTOS (v17): előbb újraolvassa a tárolót, és csak
+   ezt az egy változást írja bele. Korábban a memóriában lévő egész listát írta vissza,
+   így egy régóta nyitva hagyott másik fül felülírta az újabb jelöléseket (eltűnt pipák,
+   visszajött könyvjelzők). src = hol történt: list / trend / new / dice (a naplóhoz). */
+function toggleList(k, name, id, src){
+  const key = KINDS[k].pre + name, fresh = load(key);
+  if (fresh[id]) delete fresh[id]; else fresh[id] = today();
+  L[k][name] = fresh; store(key, fresh);
+  logMark(k, name, id, !!fresh[id], src);
+  return !!fresh[id];
+}
+/* minden lista újraolvasása a tárolóból; true, ha bármi változott */
+function reloadLists(){
+  let changed = false;
+  for (const k in KINDS) LIST_NAMES.forEach(n => {
+    const fresh = load(KINDS[k].pre + n);
+    if (JSON.stringify(fresh) !== JSON.stringify(L[k][n])) { L[k][n] = fresh; changed = true; }
+  });
+  return changed;
+}
+/* Napló: az utolsó 200 jelölés (idő, fajta, lista, cím, be/ki, hol) – a Listáim panelben látható */
+const LOG_MAX = 200;
+function logMark(k, name, id, on, src){
+  const log = load("marklog", []);
+  const m = D[k] && D[k].byId[String(id)];
+  log.push({t: new Date().toISOString(), k, l: name, id: String(id), on, s: src || "list", n: m ? (m.title || m.title_hu || "") : ""});
+  store("marklog", log.slice(-LOG_MAX));
+}
 let recsRemote = {movie: {}, tv: {}};  // a repóban lévő ajanlasok.json – mindenki látja
 let picks = load("picks"); picks.lang = picks.lang || {}; picks.country = picks.country || {};
 let svcOn = load("svcOn");             // melyik szolgáltató van bekapcsolva (hiányzó = be)
@@ -696,9 +739,9 @@ const svcKeys = () => { const s = services(); return SVC_ORDER.filter(k => s[k])
    van, egyszer) – így nyelvváltáskor sem duplázódik semmi. */
 /* Ikonok (kis SVG-rajzok a szövegbe ágyazva – nincs külön fájl, nincs letöltés) */
 const ICON = {
-  seen:'<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="m8 12.5 2.7 2.7L16.5 9"/></svg>',
-  watch:'<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" aria-hidden="true"><path d="M6 4h12v16l-6-4-6 4z"/></svg>',
-  rec:'<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" aria-hidden="true"><path d="M7 11v9H4v-9zM7 11l4-7c1.5 0 2.3 1 2 2.6L12.5 10H19a2 2 0 0 1 2 2.3l-1.2 6A2 2 0 0 1 17.8 20H7"/></svg>',
+  seen:'<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="m8 12.5 2.7 2.7L16.5 9"/></svg>',
+  watch:'<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" aria-hidden="true"><path d="M6 4h12v16l-6-4-6 4z"/></svg>',
+  rec:'<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" aria-hidden="true"><path d="M7 11v9H4v-9zM7 11l4-7c1.5 0 2.3 1 2 2.6L12.5 10H19a2 2 0 0 1 2 2.3l-1.2 6A2 2 0 0 1 17.8 20H7"/></svg>',
   x:'<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>',
   undo:'<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><path d="M4 10h11a5 5 0 0 1 0 10H9"/><path d="m8 6-4 4 4 4"/></svg>',
   play:'<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M7 4v16l13-8z"/></svg>',
@@ -1235,9 +1278,7 @@ $("#list").addEventListener("click", e => {
   const row = btn.closest(".film"), id = row.dataset.id;
   const name = btn.classList.contains("hide") ? "hidden" : btn.classList.contains("star") ? "watch"
              : btn.classList.contains("rec") ? "recs" : "seen";
-  const obj = L[kind][name];
-  if (obj[id]) delete obj[id]; else obj[id] = today();
-  saveList(kind, name);
+  toggleList(kind, name, id, "list");
   if (name === "hidden" && !$("#showHidden").checked) {
     // a sor kikerül az aktuális nézetből; nem rajzoljuk újra az egészet,
     // így a lista nem ugrik vissza a tetejére (ha az elrejtettek látszanak,
@@ -1272,6 +1313,7 @@ $("#imp").addEventListener("change", async e => {
   try {
     const d = JSON.parse(await f.text());
     let n = 0;
+    reloadLists();   // előbb a tároló friss állapota, hogy semmi ne vesszen el
     for (const [k, src] of [["movie", d], ["tv", d.tv || {}]]) {
       LIST_NAMES.forEach(name => { const add = src[name] || {}; n += Object.keys(add).length; Object.assign(L[k][name], add); saveList(k, name); });
     }
@@ -1279,6 +1321,32 @@ $("#imp").addEventListener("change", async e => {
   } catch(err) { alert(t("impErr")); }
   e.target.value = "";
 });
+/* Ha egy másik fülön változtak a listák (storage esemény), vagy a böngésző egy régi
+   állapotból hozza vissza az oldalt (visszalépés, fülváltás), újraolvassuk a tárolót,
+   és a látható sorokat a helyükön frissítjük (a lista nem ugrik vissza az elejére). */
+function syncLists(){
+  if (!reloadLists() || !cur()) return;
+  $$("#list .film").forEach(r => { const m = cur().byId[r.dataset.id]; if (m) r.outerHTML = card(m); });
+  refreshOpenShelves();
+  if (sheetM) loadDetails(kind, sheetM.id).then(renderSheet);
+  updateStats();
+}
+window.addEventListener("storage", e => { if (!e.key || /^(tv_)?(seen|watch|recs|hidden)$/.test(e.key)) syncLists(); });
+window.addEventListener("pageshow", e => { if (e.persisted) syncLists(); });
+document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") syncLists(); });
+
+/* Napló megjelenítése és mentése */
+function renderLog(){
+  const log = load("marklog", []).slice().reverse();
+  const lbl = {seen: t("seen"), watch: t("watch"), recs: t("rec"), hidden: t("hideT")};
+  $("#logList").innerHTML = log.length ? log.map(x => {
+    const d = new Date(x.t).toLocaleString(t("locale"), {dateStyle: "short", timeStyle: "short"});
+    const m = D[x.k] && D[x.k].byId[x.id], name = m ? ttl(m) : (x.n || x.id);   // a cím az oldal nyelvén
+    return `<li><span class="lt">${esc(d)}</span> ${x.on ? "＋" : "−"} <b>${esc(lbl[x.l] || x.l)}</b>: ${esc(name)} <span class="lt">(${esc(t(x.k === "tv" ? "tabTv" : "tabMovie"))}, ${esc(t("src_" + x.s) || x.s)})</span></li>`;
+  }).join("") : `<li class="lt">${t("logEmpty")}</li>`;
+}
+$("#logBox").addEventListener("toggle", () => { if ($("#logBox").open) renderLog(); });
+$("#logExp").addEventListener("click", () => download(`naplo-${today()}.json`, load("marklog", [])));
 function download(name, obj){
   const a = document.createElement("a");
   a.href = URL.createObjectURL(new Blob([JSON.stringify(obj, null, 1)], {type: "application/json"}));
@@ -1334,7 +1402,7 @@ for (const s in SH) {
   $(SH[s].row).addEventListener("click", e => { const b = e.target.closest("[data-open]"); if (b) openSh(s, b.dataset.open); });
   $(SH[s].det).addEventListener("click", e => {
     if (e.target.closest(".x")) { closeSh(s); return; }
-    const btn = e.target.closest("button.ib"); if (btn && shOpen[s]) toggleMark(shOpen[s].id, btn);
+    const btn = e.target.closest("button.ib"); if (btn && shOpen[s]) toggleMark(shOpen[s].id, btn, s === "tr" ? "trend" : "new");
   });
 }
 // „Mind →”: a listában bekapcsolja a „Csak az elmúlt 7 nap újdonságai” szűrőt, és odagörget
@@ -1460,7 +1528,7 @@ function renderSheet(x){
 $(".sheet-x").addEventListener("click", hideSheet);
 $("#sheetBody").addEventListener("click", e => {
   if (e.target.closest(".again")) { rollDice(); return; }
-  const btn = e.target.closest("button.ib"); if (btn && sheetM) toggleMark(String(sheetM.id), btn);
+  const btn = e.target.closest("button.ib"); if (btn && sheetM) toggleMark(String(sheetM.id), btn, "dice");
 });
 /* a leírás nyelvének váltása (HU/DE/EN): megjegyezzük, és minden nyitott adatlap átvált */
 document.addEventListener("click", e => {
@@ -1476,11 +1544,9 @@ document.addEventListener("click", e => {
 });
 /* ✓ láttam / megnézem / ajánlom gomb az adatlapon (🎲 vagy trend-panel):
    a listába ment, és mindenhol frissít, ahol a cím épp látszik */
-function toggleMark(id, btn){
+function toggleMark(id, btn, src){
   const name = btn.classList.contains("star") ? "watch" : btn.classList.contains("rec") ? "recs" : "seen";
-  const obj = L[kind][name];
-  if (obj[id]) delete obj[id]; else obj[id] = today();
-  saveList(kind, name);
+  toggleList(kind, name, id, src);
   const m = cur().byId[id]; if (!m) return;
   const row = $(`#list .film[data-id="${id}"]`); if (row) row.outerHTML = card(m);
   if (sheetM && String(sheetM.id) === id) loadDetails(kind, id).then(x => { renderSheet(x); popBtn("#sheetBody", name); });
@@ -1588,6 +1654,7 @@ $("#impCsv").addEventListener("change", async e => {
       else miss++;
     });
   } else { alert(t("impCsvBad")); return; }
+  reloadLists();
   ["movie", "tv"].forEach(k => { hit[k].forEach(id => { if (!L[k].seen[id]) L[k].seen[id] = today(); }); saveList(k, "seen"); });
   apply();
   alert(t("impCsvOk")(hit.movie.size, hit.tv.size, miss));
